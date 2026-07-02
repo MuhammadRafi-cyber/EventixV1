@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component LANGUAGE_LEVEL="JDK_21" inheritJdk="true">
+	<output-test url="file://$MODULE_DIR$/target/test-classes"/>
+	<contentEntry url="file://$MODULE_DIR$">
+		<testFolder url="file://$MODULE_DIR$/src/test/java"/>
+		<testFolder url="file://$MODULE_DIR$/src/test/resources"/>
+		<excludeFolder url="file://$MODULE_DIR$/target"/>
+	</contentEntry>
+	<lib name="Maven: com.github.weisj:jsvg:1.4.0" scope="RUNTIME"/>
+	<levels>
+		<level name="Maven: com.formdev:flatlaf:3.6" value="project"/>
+		<level name="Maven: com.formdev:flatlaf-extras:3.6" value="project"/>
+		<level name="Maven: com.github.weisj:jsvg:1.4.0" value="project"/>
+		<level name="Maven: com.miglayout:miglayout-swing:11.4.2" value="project"/>
+		<level name="Maven: com.miglayout:miglayout-core:11.4.2" value="project"/>
+		<level name="Maven: com.mysql:mysql-connector-j:9.3.0" value="project"/>
+		<level name="Maven: com.google.protobuf:protobuf-java:4.29.0" value="project"/>
+	</levels>
+</component>

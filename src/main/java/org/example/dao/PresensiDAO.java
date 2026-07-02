@@ -1,0 +1,55 @@
+package dao;
+
+import enums.StatusHadir;
+import util.Koneksi;
+import java.sql.*;
+
+public class PresensiDAO {
+
+    /**
+     * D1: INSERT ... ON DUPLICATE KEY UPDATE.
+     * Kolom dicatat_oleh = FK user.id_user (Panitia yang scan) — [TAMBAHAN v5].
+     */
+    public boolean simpanAtauUpdate(int idDetail, StatusHadir status, Integer dicatatOleh)
+            throws SQLException {
+        String sql = "INSERT INTO presensi (id_detail, status, waktu_presensi, dicatat_oleh) "
+                + "VALUES (?, ?, NOW(), ?) "
+                + "ON DUPLICATE KEY UPDATE status = ?, waktu_presensi = NOW(), dicatat_oleh = ?";
+        try (Connection c = Koneksi.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, idDetail);
+            ps.setString(2, status.name());
+            if (dicatatOleh != null) ps.setInt(3, dicatatOleh); else ps.setNull(3, Types.INTEGER);
+            ps.setString(4, status.name());
+            if (dicatatOleh != null) ps.setInt(5, dicatatOleh); else ps.setNull(5, Types.INTEGER);
+            return ps.executeUpdate() > 0;
+        }
+    }
+
+    /** D2: cek status kehadiran berdasarkan id_detail. */
+    public StatusHadir getStatusByDetail(int idDetail) throws SQLException {
+        String sql = "SELECT status FROM presensi WHERE id_detail = ?";
+        try (Connection c = Koneksi.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, idDetail);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return StatusHadir.valueOf(rs.getString("status"));
+            }
+        }
+        return null;
+    }
+
+    public int hitungHadirBySeminar(int idSeminar) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM presensi pr "
+                + "JOIN detail_pendaftaran dp ON pr.id_detail = dp.id_detail "
+                + "JOIN pendaftaran p ON dp.id_pendaftaran = p.id_pendaftaran "
+                + "WHERE p.id_seminar = ? AND pr.status = 'HADIR'";
+        try (Connection c = Koneksi.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, idSeminar);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getInt(1) : 0;
+            }
+        }
+    }
+}
