@@ -7,6 +7,7 @@ import org.example.view.LoginForm;
 import org.example.view.panitia.DashboardPanitia;
 import org.example.view.panitia.PesertaPanitia;
 import org.example.view.panitia.SeminarPanitia;
+import org.example.view.panitia.LaporanPanitia; // 👉 Import Halaman Laporan Panitia
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -112,6 +113,7 @@ public class Sidebar extends JPanel {
         return item;
     }
 
+    // 👉 INI ADALAH METHOD NAVIGATE YANG SUDAH DITAMBAHKAN LAPORAN
     private void navigate(String key) {
         Window window = SwingUtilities.getWindowAncestor(this);
         if ("Dashboard".equalsIgnoreCase(key)) {
@@ -126,6 +128,11 @@ public class Sidebar extends JPanel {
             }
         } else if ("Peserta".equalsIgnoreCase(key)) {
             new PesertaPanitia().setVisible(true);
+            if (window != null) {
+                window.dispose();
+            }
+        } else if ("Laporan".equalsIgnoreCase(key)) { // 👉 Logika tab laporan ditambahkan di sini
+            new LaporanPanitia().setVisible(true);
             if (window != null) {
                 window.dispose();
             }
