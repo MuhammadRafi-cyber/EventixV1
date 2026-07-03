@@ -8,6 +8,7 @@ import org.example.view.Peserta.DashboardPeserta;
 import org.example.view.Peserta.KehadiranPeserta;
 import org.example.view.Peserta.SeminarPeserta;
 import org.example.view.Peserta.SertifikatPeserta;
+import org.example.view.Peserta.LaporanPeserta;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -113,6 +114,11 @@ public class ParticipantSidebar extends JPanel {
             close(window);
         } else if ("Sertifikat".equalsIgnoreCase(key)) {
             new SertifikatPeserta().setVisible(true);
+            close(window);
+        }
+        // Logika perpindahan ke halaman Laporan saat tombol diklik
+        else if ("Laporan".equalsIgnoreCase(key)) {
+            new LaporanPeserta().setVisible(true);
             close(window);
         }
     }
