@@ -1,6 +1,7 @@
 package org.example;
 
 import org.example.util.AppTheme;
+import org.example.view.LandingPage;
 import org.example.view.LoginForm;
 import org.example.view.Peserta.DashboardPeserta;
 
@@ -13,7 +14,7 @@ public class TesFrontEnd {
         AppTheme.setup();
 
         SwingUtilities.invokeLater(() ->
-                new LoginForm().setVisible(true)
+                new LandingPage().setVisible(true)
         );
     }
 }
