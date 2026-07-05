@@ -90,19 +90,21 @@ public class PendaftaranDAO {
 
     /** C5 / F1: riwayat pendaftaran pemesan */
     public List<Object[]> getRiwayatPemesan(int idPemesan) throws SQLException {
+        // 👉 TAMBAH s.id_kategori DI SINI
         String sql = "SELECT p.id_pendaftaran, p.kode_transaksi, s.judul, s.tanggal_mulai, "
-                   + "p.status, p.total "
-                   + "FROM pendaftaran p JOIN seminar s ON p.id_seminar = s.id_seminar "
-                   + "WHERE p.id_pemesan = ? ORDER BY p.tanggal_daftar DESC";
+                + "p.status, p.total, s.id_kategori "
+                + "FROM pendaftaran p JOIN seminar s ON p.id_seminar = s.id_seminar "
+                + "WHERE p.id_pemesan = ? ORDER BY p.tanggal_daftar DESC";
         List<Object[]> list = new ArrayList<>();
         try (Connection c = Koneksi.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setInt(1, idPemesan);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) list.add(new Object[]{
-                    rs.getInt("id_pendaftaran"), rs.getString("kode_transaksi"),
-                    rs.getString("judul"),       rs.getString("tanggal_mulai"),
-                    rs.getString("status"),      rs.getDouble("total")
+                        rs.getInt("id_pendaftaran"), rs.getString("kode_transaksi"),
+                        rs.getString("judul"),       rs.getString("tanggal_mulai"),
+                        rs.getString("status"),      rs.getDouble("total"),
+                        rs.getInt("id_kategori") // 👉 TAMBAH INI JUGA
                 });
             }
         }

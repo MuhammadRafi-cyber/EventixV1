@@ -6,13 +6,9 @@ import dao.AuditLogDAO;
 import dao.UserDAO;
 import enums.Role;
 import model.User;
-import org.example.view.Peserta.DashboardPeserta;
-import org.example.view.panitia.DashboardPanitia;
 import service.AuthService;
-import org.example.util.Theme;
 
 import javax.swing.*;
-import javax.swing.border.AbstractBorder;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
@@ -21,24 +17,30 @@ import java.awt.geom.RoundRectangle2D;
 
 public class LoginForm extends JFrame {
 
-    private static final Color CARD_BORDER = new Color(244, 210, 218);
-    private static final Color FIELD_BORDER = new Color(238, 181, 191);
-    private static final Color FIELD_TEXT = new Color(95, 75, 88);
-    private static final Color DIVIDER_COLOR = new Color(246, 224, 229);
+    // --- Palet Warna ---
+    private static final Color BG_COLOR = new Color(249, 249, 255);
+    private static final Color CARD_BG = new Color(249, 249, 255);
+    private static final Color BORDER_COLOR = new Color(229, 189, 190);
+    private static final Color TEXT_DARK = new Color(17, 28, 45);
+    private static final Color TEXT_MUTED = new Color(92, 63, 64);
+    private static final Color RED_MAIN = new Color(225, 29, 72); // Tombol Login (#E11D48)
+    private static final Color RED_LOGO = new Color(184, 0, 53);  // Warna Logo (#B80035)
 
-    private static final int CONTROL_WIDTH = 300;
-    private static final int CONTROL_HEIGHT = 42;
+    // --- Komponen Input ---
+    private JTextField emailField;
+    private JPasswordField passwordField;
+    private JCheckBox rememberMeCheck;
 
-    private JTextField txtEmail;
-    private JPasswordField txtPassword;
-    private JCheckBox chkRemember;
-    private JButton btnLogin;
-    private JButton btnGoogle;
-    private JButton btnInstitution;
+    // --- Controller ---
+    private AuthController authController;
 
     public LoginForm() {
+        // Inisialisasi Backend
+        AuthService authService = new AuthService(new UserDAO(), new AuditLogDAO());
+        this.authController = new AuthController(authService);
+
         setTitle("Eventix - Login");
-        setSize(1100, 630);
+        setSize(1280, 780);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setResizable(false);
@@ -47,366 +49,297 @@ public class LoginForm extends JFrame {
     }
 
     private void initComponents() {
-        JPanel background = new SoftBackgroundPanel();
-        background.setLayout(new GridBagLayout());
-        background.setBorder(new EmptyBorder(18, 0, 18, 0));
+        // 1. Panel Background dengan efek Blur/Ambient
+        JPanel backgroundPanel = new AmbientBackground();
+        backgroundPanel.setLayout(new GridBagLayout()); // Untuk menengahkan Card Login
 
-        JPanel card = new RoundedPanel(14, Color.WHITE, CARD_BORDER);
-        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
-        card.setBorder(new EmptyBorder(30, 28, 24, 28));
-        card.setPreferredSize(new Dimension(370, 480));
-        card.setMaximumSize(new Dimension(370, 480));
-        card.setAlignmentX(Component.CENTER_ALIGNMENT);
+        // 2. Card Container (Boks Login)
+        JPanel loginCard = new RoundedPanel(12, CARD_BG, new Color(229, 189, 190, 76));
+        loginCard.setPreferredSize(new Dimension(440, 517));
+        loginCard.setLayout(new BoxLayout(loginCard, BoxLayout.Y_AXIS));
+        loginCard.setBorder(new EmptyBorder(32, 32, 32, 32));
 
-        JPanel logoPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 7, 0));
-        logoPanel.setOpaque(false);
-        logoPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        logoPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
+        // --- SECTION A: LOGO & HEADING ---
+        JPanel headerPanel = new JPanel();
+        headerPanel.setLayout(new BoxLayout(headerPanel, BoxLayout.Y_AXIS));
+        headerPanel.setOpaque(false);
+        headerPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JLabel logoImage = new JLabel(createSvgIcon("Eventix_Icon_Red.svg", 22, 28));
+        // Baris Logo + Eventix
+        JPanel brandRow = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 0));
+        brandRow.setOpaque(false);
+        brandRow.add(new JLabel(new FlatSVGIcon("images/Icon/LoginForm/Eventix_Icon_Red.svg", 26, 35)));
+        JLabel brandText = new JLabel("Eventix");
+        brandText.setFont(new Font("Segoe UI", Font.BOLD, 32));
+        brandText.setForeground(TEXT_DARK);
+        brandRow.add(brandText);
 
-        JLabel lblLogo = new JLabel("Eventix");
-        lblLogo.setFont(new Font("Segoe UI", Font.BOLD, 25));
-        lblLogo.setForeground(Theme.SECONDARY);
+        JLabel subtitleText = new JLabel("SEMINAR MANAGEMENT SYSTEM");
+        subtitleText.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        subtitleText.setForeground(TEXT_MUTED);
+        subtitleText.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        logoPanel.add(logoImage);
-        logoPanel.add(lblLogo);
+        headerPanel.add(brandRow);
+        headerPanel.add(Box.createVerticalStrut(4));
+        headerPanel.add(subtitleText);
+        headerPanel.add(Box.createVerticalStrut(32)); // Margin bawah 32px
 
-        JLabel lblSubtitle = new JLabel("SEMINAR MANAGEMENT SYSTEM");
-        lblSubtitle.setAlignmentX(Component.CENTER_ALIGNMENT);
-        lblSubtitle.setFont(new Font("Segoe UI", Font.BOLD, 10));
-        lblSubtitle.setForeground(new Color(85, 75, 88));
+        // --- SECTION B: FORM INPUT ---
+        JPanel formPanel = new JPanel();
+        formPanel.setLayout(new BoxLayout(formPanel, BoxLayout.Y_AXIS));
+        formPanel.setOpaque(false);
 
-        JLabel lblEmail = createLabel("EMAIL ADDRESS");
-        txtEmail = createInputField(
-                "e.g. admin@university.edu",
-                createSvgIcon("Mail_Icon.svg", 11, 9),
-                null,
-                false
-        );
+        // 1. Kolom Email
+        JPanel emailWrap = new JPanel(new BorderLayout(0, 4));
+        emailWrap.setOpaque(false);
+        JLabel emailLabel = new JLabel("EMAIL ADDRESS");
+        emailLabel.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        emailLabel.setForeground(TEXT_MUTED);
+        emailWrap.add(emailLabel, BorderLayout.NORTH);
 
-        JPanel passwordHeader = createControlRow();
-        passwordHeader.setLayout(new BorderLayout());
+        JPanel emailInputPanel = createInputPanel("images/Icon/LoginForm/Mail_Icon.svg");
+        emailField = new JTextField();
+        emailField.setBorder(null);
+        emailField.setOpaque(false);
+        emailField.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        emailInputPanel.add(emailField, BorderLayout.CENTER);
+        emailWrap.add(emailInputPanel, BorderLayout.CENTER);
 
-        JLabel lblPassword = createLabel("PASSWORD");
-        JLabel lblForgot = new JLabel("Forgot Password?");
-        lblForgot.setFont(new Font("Segoe UI", Font.BOLD, 9));
-        lblForgot.setForeground(Theme.PRIMARY);
+        // 2. Kolom Password
+        JPanel passWrap = new JPanel(new BorderLayout(0, 4));
+        passWrap.setOpaque(false);
 
-        passwordHeader.add(lblPassword, BorderLayout.WEST);
-        passwordHeader.add(lblForgot, BorderLayout.EAST);
+        JPanel passLabelRow = new JPanel(new BorderLayout());
+        passLabelRow.setOpaque(false);
+        JLabel passLabel = new JLabel("PASSWORD");
+        passLabel.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        passLabel.setForeground(TEXT_MUTED);
 
-        txtPassword = (JPasswordField) createInputField(
-                "\u2022 \u2022 \u2022 \u2022 \u2022 \u2022 \u2022 \u2022",
-                createSvgIcon("Lock_Icon.svg", 9, 12),
-                createSvgIcon("Eye_Icon.svg", 12, 8),
-                true
-        );
+        JLabel forgotLabel = new JLabel("Forgot password?");
+        forgotLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        forgotLabel.setForeground(TEXT_MUTED);
+        forgotLabel.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
-        chkRemember = new JCheckBox("Keep me signed in");
-        chkRemember.setOpaque(false);
-        chkRemember.setFocusPainted(false);
-        chkRemember.setFont(new Font("Segoe UI", Font.PLAIN, 9));
-        chkRemember.setForeground(new Color(88, 76, 88));
-        chkRemember.setIconTextGap(7);
-        chkRemember.setAlignmentX(Component.CENTER_ALIGNMENT);
-        chkRemember.setMaximumSize(new Dimension(CONTROL_WIDTH, 22));
-        chkRemember.setPreferredSize(new Dimension(CONTROL_WIDTH, 22));
+        passLabelRow.add(passLabel, BorderLayout.WEST);
+        passLabelRow.add(forgotLabel, BorderLayout.EAST);
+        passWrap.add(passLabelRow, BorderLayout.NORTH);
 
-        btnLogin = new JButton("LOGIN  \u2192");
-        btnLogin.setBackground(Theme.PRIMARY);
-        btnLogin.setForeground(Color.WHITE);
-        btnLogin.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        btnLogin.setFocusPainted(false);
-        btnLogin.setBorderPainted(false);
-        btnLogin.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btnLogin.setAlignmentX(Component.CENTER_ALIGNMENT);
-        btnLogin.setMaximumSize(new Dimension(CONTROL_WIDTH, 46));
-        btnLogin.setPreferredSize(new Dimension(CONTROL_WIDTH, 46));
-        btnLogin.addActionListener(e -> handleLogin());
-        getRootPane().setDefaultButton(btnLogin);
+        JPanel passInputPanel = createInputPanel("images/Icon/LoginForm/Lock_Icon.svg");
+        passwordField = new JPasswordField();
+        passwordField.setBorder(null);
+        passwordField.setOpaque(false);
+        passwordField.setFont(new Font("Segoe UI", Font.PLAIN, 14));
 
-        JSeparator separator = new JSeparator();
-        separator.setForeground(DIVIDER_COLOR);
-        separator.setMaximumSize(new Dimension(CONTROL_WIDTH, 1));
-        separator.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-        JPanel registerPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
-        registerPanel.setOpaque(false);
-        registerPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        registerPanel.setMaximumSize(new Dimension(CONTROL_WIDTH, 18));
-
-        JLabel lblQuestion = new JLabel("Don't have an account?");
-        lblQuestion.setFont(new Font("Segoe UI", Font.PLAIN, 9));
-        lblQuestion.setForeground(new Color(95, 85, 96));
-
-        JLabel lblRegister = new JLabel(" Register");
-        lblRegister.setFont(new Font("Segoe UI", Font.BOLD, 9));
-        lblRegister.setForeground(Theme.PRIMARY);
-        lblRegister.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        lblRegister.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                new RegisterForm().setVisible(true);
-                dispose();
+        JLabel eyeIcon = new JLabel(new FlatSVGIcon("images/Icon/LoginForm/Eye_Icon.svg", 18, 12));
+        eyeIcon.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        // Fitur sederhana show/hide password
+        eyeIcon.addMouseListener(new MouseAdapter() {
+            boolean isVisible = false;
+            @Override public void mouseClicked(MouseEvent e) {
+                isVisible = !isVisible;
+                passwordField.setEchoChar(isVisible ? (char) 0 : '•');
             }
         });
 
-        registerPanel.add(lblQuestion);
-        registerPanel.add(lblRegister);
+        passInputPanel.add(passwordField, BorderLayout.CENTER);
+        passInputPanel.add(eyeIcon, BorderLayout.EAST);
+        passWrap.add(passInputPanel, BorderLayout.CENTER);
 
-        JPanel dividerPanel = createDividerWithText("OR CONNECT WITH");
+        // 3. Remember Me
+        JPanel rememberRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        rememberRow.setOpaque(false);
+        rememberMeCheck = new JCheckBox("Remember Me");
+        rememberMeCheck.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        rememberMeCheck.setForeground(TEXT_MUTED);
+        rememberMeCheck.setOpaque(false);
+        rememberMeCheck.setFocusPainted(false);
+        rememberRow.add(rememberMeCheck);
 
-        btnGoogle = createSocialButton("Google", "LogIn_Icon.svg");
-        btnInstitution = createSocialButton("Institusi", "Institute_Icon.svg");
+        formPanel.add(emailWrap);
+        formPanel.add(Box.createVerticalStrut(16));
+        formPanel.add(passWrap);
+        formPanel.add(Box.createVerticalStrut(8));
+        formPanel.add(rememberRow);
+        formPanel.add(Box.createVerticalStrut(24));
 
-        JPanel socialPanel = new JPanel(new GridLayout(1, 2, 12, 0));
-        socialPanel.setOpaque(false);
-        socialPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        socialPanel.setMaximumSize(new Dimension(CONTROL_WIDTH, 36));
-        socialPanel.setPreferredSize(new Dimension(CONTROL_WIDTH, 36));
-        socialPanel.add(btnGoogle);
-        socialPanel.add(btnInstitution);
+        // --- SECTION C: TOMBOL & LINK DAFTAR ---
+        JButton loginBtn = new JButton("Login");
+        loginBtn.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        loginBtn.setForeground(Color.WHITE);
+        loginBtn.setBackground(RED_MAIN);
+        loginBtn.setIcon(new FlatSVGIcon("images/Icon/LoginForm/LogIn_Icon.svg", 16, 16));
+        loginBtn.setIconTextGap(8);
+        loginBtn.setFocusPainted(false);
+        loginBtn.setBorderPainted(false);
+        loginBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        loginBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
+        loginBtn.setMaximumSize(new Dimension(374, 56));
+        loginBtn.setPreferredSize(new Dimension(374, 56));
 
-        card.add(logoPanel);
-        card.add(Box.createVerticalStrut(4));
-        card.add(lblSubtitle);
-        card.add(Box.createVerticalStrut(29));
-        card.add(lblEmail);
-        card.add(Box.createVerticalStrut(7));
-        card.add(txtEmail);
-        card.add(Box.createVerticalStrut(15));
-        card.add(passwordHeader);
-        card.add(Box.createVerticalStrut(7));
-        card.add(txtPassword);
-        card.add(Box.createVerticalStrut(12));
-        card.add(chkRemember);
-        card.add(Box.createVerticalStrut(19));
-        card.add(btnLogin);
-        card.add(Box.createVerticalStrut(22));
-        card.add(separator);
-        card.add(Box.createVerticalStrut(18));
-        card.add(registerPanel);
-        card.add(Box.createVerticalStrut(13));
-        card.add(dividerPanel);
-        card.add(Box.createVerticalStrut(12));
-        card.add(socialPanel);
+        // Aksi Tombol Login ke Database Backend
+        loginBtn.addActionListener(e -> prosesLogin());
 
-        background.add(card);
-        add(background);
+        // Divider
+        JPanel dividerPanel = new JPanel() {
+            @Override protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                g.setColor(new Color(229, 189, 190, 76)); // Transparan 30%
+                g.drawLine(0, getHeight()/2, getWidth(), getHeight()/2);
+            }
+        };
+        dividerPanel.setOpaque(false);
+        dividerPanel.setPreferredSize(new Dimension(374, 20));
+        dividerPanel.setMaximumSize(new Dimension(374, 20));
+
+        JPanel signUpRow = new JPanel(new FlowLayout(FlowLayout.CENTER, 4, 0));
+        signUpRow.setOpaque(false);
+        JLabel noAccLabel = new JLabel("Don't have an account?");
+        noAccLabel.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        noAccLabel.setForeground(TEXT_MUTED);
+
+        JLabel signUpLink = new JLabel("Sign up");
+        signUpLink.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        signUpLink.setForeground(RED_MAIN);
+        signUpLink.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        signUpLink.addMouseListener(new MouseAdapter() {
+            @Override public void mouseClicked(MouseEvent e) {
+                dispose();
+                new RegisterForm().setVisible(true);
+            }
+        });
+
+        signUpRow.add(noAccLabel);
+        signUpRow.add(signUpLink);
+
+        formPanel.add(loginBtn);
+        formPanel.add(Box.createVerticalStrut(24));
+        formPanel.add(dividerPanel);
+        formPanel.add(Box.createVerticalStrut(8));
+        formPanel.add(signUpRow);
+
+        // Satukan ke Card
+        loginCard.add(headerPanel);
+        loginCard.add(formPanel);
+
+        backgroundPanel.add(loginCard); // GridBagLayout akan otomatis menengahkan
+        add(backgroundPanel, BorderLayout.CENTER);
     }
 
-    private JPanel createControlRow() {
-        JPanel panel = new JPanel();
-        panel.setOpaque(false);
-        panel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        panel.setMaximumSize(new Dimension(CONTROL_WIDTH, 18));
-        panel.setPreferredSize(new Dimension(CONTROL_WIDTH, 18));
-        return panel;
-    }
+    // --- FUNGSI LOGIN KE BACKEND ---
+    private void prosesLogin() {
+        String email = emailField.getText().trim();
+        String password = new String(passwordField.getPassword());
 
-    private JLabel createLabel(String text) {
-        JLabel label = new JLabel(text);
-        label.setFont(new Font("Segoe UI", Font.BOLD, 9));
-        label.setForeground(new Color(76, 62, 76));
-        label.setAlignmentX(Component.CENTER_ALIGNMENT);
-        label.setMaximumSize(new Dimension(CONTROL_WIDTH, 16));
-        label.setPreferredSize(new Dimension(CONTROL_WIDTH, 16));
-        return label;
-    }
-
-    private JTextField createInputField(String placeholder, Icon leadingIcon, Icon trailingIcon, boolean password) {
-        JTextField field = password ? new JPasswordField() : new JTextField();
-
-        field.putClientProperty("JTextField.placeholderText", placeholder);
-        field.putClientProperty("JTextField.leadingIcon", leadingIcon);
-
-        if (trailingIcon != null) {
-            field.putClientProperty("JTextField.trailingIcon", trailingIcon);
+        if (email.isEmpty() || password.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Email dan Password tidak boleh kosong!", "Peringatan", JOptionPane.WARNING_MESSAGE);
+            return;
         }
 
-        field.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        field.setForeground(FIELD_TEXT);
-        field.setCaretColor(Theme.PRIMARY);
-        field.setBackground(Color.WHITE);
-        field.setBorder(new CompoundRoundedBorder(8, FIELD_BORDER, new Insets(0, 28, 0, 27)));
-        field.setAlignmentX(Component.CENTER_ALIGNMENT);
-        field.setMaximumSize(new Dimension(CONTROL_WIDTH, CONTROL_HEIGHT));
-        field.setPreferredSize(new Dimension(CONTROL_WIDTH, CONTROL_HEIGHT));
-        field.setMinimumSize(new Dimension(CONTROL_WIDTH, CONTROL_HEIGHT));
-
-        return field;
-    }
-
-    private JPanel createDividerWithText(String text) {
-        JPanel panel = new JPanel(new GridBagLayout());
-        panel.setOpaque(false);
-        panel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        panel.setMaximumSize(new Dimension(CONTROL_WIDTH, 18));
-        panel.setPreferredSize(new Dimension(CONTROL_WIDTH, 18));
-
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridy = 0;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.weightx = 1;
-
-        JSeparator leftLine = new JSeparator();
-        leftLine.setForeground(DIVIDER_COLOR);
-        panel.add(leftLine, gbc);
-
-        JLabel label = new JLabel(text);
-        label.setFont(new Font("Segoe UI", Font.BOLD, 9));
-        label.setForeground(new Color(205, 166, 176));
-        label.setBorder(new EmptyBorder(0, 10, 0, 10));
-
-        gbc.weightx = 0;
-        gbc.fill = GridBagConstraints.NONE;
-        panel.add(label, gbc);
-
-        gbc.weightx = 1;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-
-        JSeparator rightLine = new JSeparator();
-        rightLine.setForeground(DIVIDER_COLOR);
-        panel.add(rightLine, gbc);
-
-        return panel;
-    }
-
-    private JButton createSocialButton(String text, String iconPath) {
-        JButton button = new JButton(text, createSvgIcon(iconPath, 16, 16));
-        button.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        button.setForeground(new Color(39, 51, 89));
-        button.setBackground(Color.WHITE);
-        button.setFocusPainted(false);
-        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        button.setBorder(new CompoundRoundedBorder(8, FIELD_BORDER, new Insets(0, 10, 0, 10)));
-        button.setIconTextGap(7);
-        return button;
-    }
-
-    private Icon createSvgIcon(String fileName, int width, int height) {
-        return new FlatSVGIcon("images/Icon/LoginForm/" + fileName, width, height);
-    }
-
-    private void handleLogin() {
-        String email = txtEmail.getText().trim();
-        String password = new String(txtPassword.getPassword());
-
-        AuthController authController = new AuthController(new AuthService(new UserDAO(), new AuditLogDAO()));
+        // Panggil fungsi login dari AuthController
         String hasil = authController.login(email, password);
-        if (!hasil.startsWith("SUKSES|")) {
-            JOptionPane.showMessageDialog(this, hasil.replace("ERROR|", ""), "Login gagal", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
 
-        User user = AuthController.getUserAktif();
-        if (user == null) {
-            JOptionPane.showMessageDialog(this, "Sesi login tidak ditemukan.", "Login gagal", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
+        if (hasil.startsWith("SUKSES|")) {
+            // Ambil User yang berhasil login
+            User userAktif = AuthController.getUserAktif();
 
-        if (user.getRole() == Role.PANITIA) {
-            new DashboardPanitia().setVisible(true);
-            dispose();
-        } else if (user.getRole() == Role.PESERTA) {
-            new DashboardPeserta().setVisible(true);
-            dispose();
+            // Redirect ke halaman yang sesuai Role
+            if (userAktif.getRole() == Role.PANITIA || userAktif.getRole() == Role.ADMIN) {
+                new org.example.view.panitia.DashboardPanitia().setVisible(true);
+            } else {
+                new org.example.view.Peserta.DashboardPeserta().setVisible(true);
+            }
+            dispose(); // Tutup form login
         } else {
-            JOptionPane.showMessageDialog(this, "Dashboard untuk role " + user.getRole() + " belum tersedia.", "Login berhasil", JOptionPane.INFORMATION_MESSAGE);
+            // Tampilkan pesan error dari backend
+            String pesanError = hasil.split("\\|")[1];
+            JOptionPane.showMessageDialog(this, pesanError, "Login Gagal", JOptionPane.ERROR_MESSAGE);
         }
     }
 
-    private static class SoftBackgroundPanel extends JPanel {
-        @Override
-        protected void paintComponent(Graphics g) {
-            super.paintComponent(g);
+    // --- UI UTILITY METHODS ---
 
-            Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+    // Membuat boks input dengan background putih, rounded border, dan ikon di kiri
+    private JPanel createInputPanel(String iconPath) {
+        JPanel panel = new JPanel(new BorderLayout(12, 0)) {
+            @Override protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(Color.WHITE);
+                g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 8, 8);
+                g2.setColor(BORDER_COLOR);
+                g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 8, 8);
+                g2.dispose();
+            }
+        };
+        panel.setOpaque(false);
+        panel.setPreferredSize(new Dimension(374, 50));
+        panel.setMaximumSize(new Dimension(374, 50));
+        panel.setBorder(new EmptyBorder(0, 16, 0, 16));
 
-            GradientPaint base = new GradientPaint(
-                    0, 0, new Color(252, 250, 255),
-                    getWidth(), getHeight(), new Color(246, 248, 255)
-            );
-            g2.setPaint(base);
-            g2.fillRect(0, 0, getWidth(), getHeight());
+        JLabel icon = new JLabel(new FlatSVGIcon(iconPath, 16, 16));
+        panel.add(icon, BorderLayout.WEST);
 
-            RadialGradientPaint glow = new RadialGradientPaint(
-                    new Point(getWidth() / 3, getHeight() / 2),
-                    Math.max(getWidth(), getHeight()) / 2f,
-                    new float[]{0f, 1f},
-                    new Color[]{new Color(255, 231, 238, 175), new Color(255, 255, 255, 0)}
-            );
-            g2.setPaint(glow);
-            g2.fillRect(0, 0, getWidth(), getHeight());
-
-            g2.dispose();
-        }
+        return panel;
     }
 
+    // Card Panel Bulat
     private static class RoundedPanel extends JPanel {
         private final int radius;
-        private final Color background;
-        private final Color border;
-
-        private RoundedPanel(int radius, Color background, Color border) {
-            this.radius = radius;
-            this.background = background;
-            this.border = border;
+        private final Color bg, border;
+        public RoundedPanel(int radius, Color bg, Color border) {
+            this.radius = radius; this.bg = bg; this.border = border;
             setOpaque(false);
         }
-
-        @Override
-        protected void paintComponent(Graphics g) {
+        @Override protected void paintComponent(Graphics g) {
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
-            g2.setColor(background);
-            g2.fill(new RoundRectangle2D.Double(0, 0, getWidth() - 1, getHeight() - 1, radius, radius));
-
+            g2.setColor(bg);
+            g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, radius, radius);
             g2.setColor(border);
-            g2.draw(new RoundRectangle2D.Double(0, 0, getWidth() - 1, getHeight() - 1, radius, radius));
-
+            g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, radius, radius);
             g2.dispose();
             super.paintComponent(g);
         }
     }
 
-    private static class CompoundRoundedBorder extends AbstractBorder {
-        private final int radius;
-        private final Color color;
-        private final Insets padding;
-
-        private CompoundRoundedBorder(int radius, Color color, Insets padding) {
-            this.radius = radius;
-            this.color = color;
-            this.padding = padding;
-        }
-
+    // Background Kustom dengan Efek Ambient Blur Simulation
+    private static class AmbientBackground extends JPanel {
         @Override
-        public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-            g2.setColor(color);
-            g2.drawRoundRect(x, y, width - 1, height - 1, radius, radius);
+            // 1. Latar Belakang Linear Gradient (#F9F9FF ke Putih)
+            GradientPaint gp = new GradientPaint(0, 0, new Color(249, 249, 255), 0, getHeight(), Color.WHITE);
+            g2.setPaint(gp);
+            g2.fillRect(0, 0, getWidth(), getHeight());
+
+            // 2. Bola Blur Kanan Atas (Merah B80035, 5% Opacity)
+            RadialGradientPaint rpRed = new RadialGradientPaint(
+                    getWidth() - 200, 100, 500,
+                    new float[]{0f, 1f},
+                    new Color[]{new Color(184, 0, 53, 20), new Color(184, 0, 53, 0)}
+            );
+            g2.setPaint(rpRed);
+            g2.fillOval(getWidth() - 700, -200, 1000, 1000);
+
+            // 3. Bola Blur Kiri Bawah (Biru 4F5C8E, 5% Opacity)
+            RadialGradientPaint rpBlue = new RadialGradientPaint(
+                    100, getHeight() - 100, 400,
+                    new float[]{0f, 1f},
+                    new Color[]{new Color(79, 92, 142, 20), new Color(79, 92, 142, 0)}
+            );
+            g2.setPaint(rpBlue);
+            g2.fillOval(-300, getHeight() - 500, 800, 800);
 
             g2.dispose();
         }
+    }
 
-        @Override
-        public Insets getBorderInsets(Component c) {
-            return padding;
-        }
-
-        @Override
-        public Insets getBorderInsets(Component c, Insets insets) {
-            insets.top = padding.top;
-            insets.left = padding.left;
-            insets.bottom = padding.bottom;
-            insets.right = padding.right;
-            return insets;
-        }
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            new LoginForm().setVisible(true);
+        });
     }
 }
