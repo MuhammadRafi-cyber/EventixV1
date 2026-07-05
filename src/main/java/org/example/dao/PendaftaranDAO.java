@@ -88,24 +88,38 @@ public class PendaftaranDAO {
         throw new DataTidakDitemukanException("Pendaftaran", kode);
     }
 
-    /** C5 / F1: riwayat pendaftaran pemesan */
+    /** C5 / F1: riwayat pendaftaran pemesan beserta status presensinya */
     public List<Object[]> getRiwayatPemesan(int idPemesan) throws SQLException {
-        // 👉 TAMBAH s.id_kategori DI SINI
+        // Melakukan JOIN hingga ke tabel presensi untuk mendapatkan waktu dan status
         String sql = "SELECT p.id_pendaftaran, p.kode_transaksi, s.judul, s.tanggal_mulai, "
-                + "p.status, p.total, s.id_kategori "
-                + "FROM pendaftaran p JOIN seminar s ON p.id_seminar = s.id_seminar "
-                + "WHERE p.id_pemesan = ? ORDER BY p.tanggal_daftar DESC";
+                + "p.status, p.total, s.id_kategori, "
+                + "MAX(pr.waktu_presensi) AS waktu_presensi, MAX(pr.status) AS status_kehadiran "
+                + "FROM pendaftaran p "
+                + "JOIN seminar s ON p.id_seminar = s.id_seminar "
+                + "LEFT JOIN detail_pendaftaran dp ON dp.id_pendaftaran = p.id_pendaftaran "
+                + "LEFT JOIN presensi pr ON pr.id_detail = dp.id_detail "
+                + "WHERE p.id_pemesan = ? "
+                + "GROUP BY p.id_pendaftaran, p.kode_transaksi, s.judul, s.tanggal_mulai, p.status, p.total, s.id_kategori "
+                + "ORDER BY p.tanggal_daftar DESC";
+
         List<Object[]> list = new ArrayList<>();
         try (Connection c = Koneksi.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setInt(1, idPemesan);
             try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) list.add(new Object[]{
-                        rs.getInt("id_pendaftaran"), rs.getString("kode_transaksi"),
-                        rs.getString("judul"),       rs.getString("tanggal_mulai"),
-                        rs.getString("status"),      rs.getDouble("total"),
-                        rs.getInt("id_kategori") // 👉 TAMBAH INI JUGA
-                });
+                while (rs.next()) {
+                    list.add(new Object[]{
+                            rs.getInt("id_pendaftaran"),
+                            rs.getString("kode_transaksi"),
+                            rs.getString("judul"),
+                            rs.getString("tanggal_mulai"),
+                            rs.getString("status"),
+                            rs.getDouble("total"),
+                            rs.getInt("id_kategori"),
+                            rs.getTimestamp("waktu_presensi"),  // Index ke-7
+                            rs.getString("status_kehadiran")    // Index ke-8
+                    });
+                }
             }
         }
         return list;

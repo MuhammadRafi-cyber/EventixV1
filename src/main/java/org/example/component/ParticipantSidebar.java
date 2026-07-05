@@ -38,10 +38,11 @@ public class ParticipantSidebar extends JPanel {
         add(menu("Sertifikat", "Sertifikat", "Certificate_Icon.svg", "Certificate_Icon_White.svg", active));
         add(menu("Laporan", "Laporan", "Reports_Icon.svg", "Reports_Icon_White.svg", active));
 
+        // PENGATURAN DIHAPUS SESUAI PERMINTAAN
+
         add(Box.createVerticalStrut(32));
         add(createDivider());
         add(Box.createVerticalStrut(26));
-        add(menu("Pengaturan", "Pengaturan", "Settings_Icon.svg", "Settings_Icon.svg", active));
 
         JPanel logout = menu("Keluar", "Keluar", "LogOut_Icon.svg", "LogOut_Icon.svg", active);
         logout.addMouseListener(new MouseAdapter() {
@@ -50,9 +51,7 @@ public class ParticipantSidebar extends JPanel {
                 Window window = SwingUtilities.getWindowAncestor(ParticipantSidebar.this);
                 AuthController.setUserAktif(null);
                 new LoginForm().setVisible(true);
-                if (window != null) {
-                    window.dispose();
-                }
+                if (window != null) window.dispose();
             }
         });
         add(logout);
@@ -93,9 +92,7 @@ public class ParticipantSidebar extends JPanel {
         item.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                if (!selected) {
-                    navigate(key);
-                }
+                if (!selected) navigate(key);
             }
         });
         return item;
@@ -105,28 +102,16 @@ public class ParticipantSidebar extends JPanel {
         Window window = SwingUtilities.getWindowAncestor(this);
         if ("Dashboard".equalsIgnoreCase(key)) {
             new DashboardPeserta().setVisible(true);
-            close(window);
         } else if ("Seminar".equalsIgnoreCase(key)) {
             new SeminarPeserta().setVisible(true);
-            close(window);
         } else if ("Kehadiran".equalsIgnoreCase(key)) {
             new KehadiranPeserta().setVisible(true);
-            close(window);
         } else if ("Sertifikat".equalsIgnoreCase(key)) {
             new SertifikatPeserta().setVisible(true);
-            close(window);
-        }
-        // Logika perpindahan ke halaman Laporan saat tombol diklik
-        else if ("Laporan".equalsIgnoreCase(key)) {
+        } else if ("Laporan".equalsIgnoreCase(key)) {
             new LaporanPeserta().setVisible(true);
-            close(window);
         }
-    }
-
-    private void close(Window window) {
-        if (window != null) {
-            window.dispose();
-        }
+        if (window != null) window.dispose();
     }
 
     private JComponent createDivider() {

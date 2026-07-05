@@ -1,460 +1,391 @@
 package org.example.view.Peserta;
 
-import org.example.component.Header;
+import com.formdev.flatlaf.extras.FlatSVGIcon;
+import controller.AuthController;
+import dao.LaporanDAO;
+import model.User;
 import org.example.component.ParticipantSidebar;
-import util.CsvExporter;
+import org.example.component.ScrollablePanel;
+import service.LaporanService;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.geom.RoundRectangle2D;
 import java.io.File;
-import java.util.ArrayList;
 import java.util.List;
 
 public class LaporanPeserta extends JFrame {
 
-    private static final Color PAGE_BG = new Color(248, 249, 255);
-    private static final Color CARD_BORDER = new Color(239, 188, 195);
-    private static final Color TEXT = new Color(18, 28, 45);
-    private static final Color MUTED = new Color(88, 68, 72);
-    private static final Color RED = new Color(198, 0, 64);
-    private static final Color BLUE = new Color(80, 95, 148);
-    private static final Color SOFT_BLUE = new Color(239, 243, 255);
+    private static final Color PAGE_BG = new Color(249, 249, 255);
+    private static final Color TEXT_DARK = new Color(17, 28, 45);
+    private static final Color TEXT_MUTED = new Color(144, 111, 112);
+    private static final Color BORDER_COLOR = new Color(229, 189, 190);
+    private static final Color RED_MAIN = new Color(225, 29, 72);
+
+    private User userAktif;
+    private LaporanService laporanService;
+    private String userName = "Peserta";
+
+    private int jamBelajar = 0;
+    private int seminarSelesai = 0;
+    private int sertifikatDidapat = 0;
+
+    // 👈 KUNCI: Kategori Umum Dihapus, sisa 3 Matriks Asli
+    private int techCount = 0;
+    private int softCount = 0;
+    private int businessCount = 0;
 
     public LaporanPeserta() {
-        setTitle("Eventix - Laporan Analitik");
+        setTitle("Eventix - Laporan Peserta");
         setSize(1280, 780);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
-        setResizable(false);
+
+        loadBackendData();
         initComponents();
+    }
+
+    private void loadBackendData() {
+        userAktif = AuthController.getUserAktif();
+        LaporanDAO laporanDAO = new LaporanDAO();
+        laporanService = new LaporanService(laporanDAO);
+
+        if (userAktif == null) return;
+
+        try {
+            userName = userAktif.getNama();
+            List<Object[]> dataLaporan = laporanService.getLaporanPeserta(userAktif.getIdUser());
+
+            if (dataLaporan != null && !dataLaporan.isEmpty()) {
+                for (Object[] row : dataLaporan) {
+                    String status = row[4] != null ? String.valueOf(row[4]) : "";
+                    if ("HADIR".equalsIgnoreCase(status)) {
+                        seminarSelesai++;
+                        jamBelajar += 3;
+                    }
+
+                    String noSertif = row[5] != null ? String.valueOf(row[5]) : "";
+                    if (!noSertif.isEmpty() && !noSertif.equals("null")) {
+                        sertifikatDidapat++;
+                    }
+
+                    // 👈 KUNCI: Klasifikasi dipaksa ke 3 matriks ini saja
+                    String judul = row[0] != null ? String.valueOf(row[0]).toLowerCase() : "";
+                    if (judul.contains("tech") || judul.contains("ai") || judul.contains("web") || judul.contains("data") || judul.contains("code") || judul.contains("cyber")) {
+                        techCount++;
+                    } else if (judul.contains("business") || judul.contains("bisnis") || judul.contains("marketing") || judul.contains("startup") || judul.contains("finance")) {
+                        businessCount++;
+                    } else {
+                        // Kategori lainnya akan dipukul rata masuk ke Pengembangan Diri / Soft Skill
+                        softCount++;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Gagal memuat Laporan dari database: " + e.getMessage());
+        }
     }
 
     private void initComponents() {
         JPanel root = new JPanel(new BorderLayout());
         root.setBackground(PAGE_BG);
         root.add(new ParticipantSidebar("Laporan"), BorderLayout.WEST);
-        root.add(createMainArea(), BorderLayout.CENTER);
+
+        JPanel mainArea = new JPanel(new BorderLayout());
+        mainArea.setBackground(PAGE_BG);
+        mainArea.add(createTopNav(), BorderLayout.NORTH);
+
+        ScrollablePanel contentPanel = new ScrollablePanel();
+        contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
+        contentPanel.setBackground(PAGE_BG);
+
+        // 👈 KUNCI: Lebar dikecilkan ke 920px agar tidak kepotong
+        contentPanel.setPreferredSize(new Dimension(920, 1000));
+        contentPanel.setMaximumSize(new Dimension(920, Integer.MAX_VALUE));
+
+        contentPanel.add(createHeaderSection());
+        contentPanel.add(Box.createVerticalStrut(32));
+        contentPanel.add(createMetricsRow());
+        contentPanel.add(Box.createVerticalStrut(32));
+        contentPanel.add(createAnalyticsSection());
+        contentPanel.add(Box.createVerticalGlue());
+
+        JPanel anchorWrapper = new JPanel(new GridBagLayout());
+        anchorWrapper.setBackground(PAGE_BG);
+        anchorWrapper.setBorder(new EmptyBorder(32, 32, 32, 32));
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0; gbc.gridy = 0;
+        gbc.weightx = 1.0; gbc.weighty = 1.0;
+        gbc.anchor = GridBagConstraints.NORTHWEST;
+        gbc.fill = GridBagConstraints.NONE;
+
+        anchorWrapper.add(contentPanel, gbc);
+
+        JScrollPane scrollPane = new JScrollPane(anchorWrapper);
+        scrollPane.setBorder(null);
+        scrollPane.getVerticalScrollBar().setUnitIncrement(30);
+        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollPane.getViewport().setOpaque(false);
+
+        mainArea.add(scrollPane, BorderLayout.CENTER);
+        root.add(mainArea, BorderLayout.CENTER);
         add(root);
     }
 
-    private JPanel createMainArea() {
-        JPanel main = new JPanel(new BorderLayout());
-        main.setBackground(PAGE_BG);
-        main.add(new Header("Laporan Akademik"), BorderLayout.NORTH);
+    private JPanel createTopNav() {
+        JPanel nav = new JPanel(new BorderLayout());
+        nav.setBackground(PAGE_BG);
+        nav.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER_COLOR));
+        nav.setPreferredSize(new Dimension(0, 64));
 
-        // Membungkus panel laporan dengan fitur scroll vertikal
-        main.add(scroll(createReportPage(), 16), BorderLayout.CENTER);
-        return main;
-    }
+        JPanel profilePanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 16, 16));
+        profilePanel.setOpaque(false);
+        JLabel profileName = new JLabel(userName + " (Peserta)");
+        profileName.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        profileName.setForeground(TEXT_DARK);
+        profilePanel.add(profileName);
+        profilePanel.add(createIcon("images/Icon/Dashboard/user_icon.svg", 28, 28));
 
-    // Mengunci lebar agar tidak scroll ke kanan, membiarkan panjang ke bawah
-    private JScrollPane scroll(JPanel content, int increment) {
-        JScrollPane scrollPane = new JScrollPane(new ScrollableHost(content));
-        scrollPane.setBorder(null);
-        scrollPane.setOpaque(false);
-        scrollPane.getViewport().setOpaque(false);
-        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-        scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
-        scrollPane.getVerticalScrollBar().setUnitIncrement(increment);
-        return scrollPane;
-    }
-
-    private JPanel createReportPage() {
-        JPanel page = new JPanel();
-        page.setOpaque(false);
-        page.setBorder(new EmptyBorder(30, 30, 30, 30));
-        page.setLayout(new BoxLayout(page, BoxLayout.Y_AXIS));
-
-        // Penambahan Komponen dengan jarak vertikal yang lebih lega
-        page.add(createHeaderSection());
-        page.add(Box.createVerticalStrut(32));
-
-        page.add(createMetricsSection());
-        page.add(Box.createVerticalStrut(32));
-
-        page.add(createAnalyticsSection());
-        page.add(Box.createVerticalStrut(32));
-
-        page.add(createTimelineSection());
-        page.add(Box.createVerticalStrut(20)); // Margin bawah extra
-
-        return page;
+        nav.add(profilePanel, BorderLayout.EAST);
+        return nav;
     }
 
     private JPanel createHeaderSection() {
-        JPanel row = new JPanel(new BorderLayout());
-        row.setOpaque(false);
-        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 72));
-        row.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JPanel header = new JPanel(new BorderLayout());
+        header.setOpaque(false);
+        header.setAlignmentX(Component.LEFT_ALIGNMENT);
+        header.setMaximumSize(new Dimension(920, 80));
 
-        JPanel left = new JPanel();
-        left.setOpaque(false);
-        left.setLayout(new BoxLayout(left, BoxLayout.Y_AXIS));
-        left.add(label("Analisis Kemajuan", Font.BOLD, 31, TEXT));
-        left.add(Box.createVerticalStrut(5));
-        left.add(label("Pantau capaian belajar, pencapaian kompetensi, dan statistik kehadiran Anda.", Font.PLAIN, 14, MUTED));
-        row.add(left, BorderLayout.WEST);
+        JPanel textWrap = new JPanel();
+        textWrap.setLayout(new BoxLayout(textWrap, BoxLayout.Y_AXIS));
+        textWrap.setOpaque(false);
 
-        JButton btnExport = filledButton("Unduh Laporan", 160, 48);
-        btnExport.addActionListener(e -> downloadCSV());
-        row.add(btnExport, BorderLayout.EAST);
+        JLabel title = new JLabel("Laporan Akademik");
+        title.setFont(new Font("Segoe UI", Font.BOLD, 32));
+        title.setForeground(TEXT_DARK);
 
-        return row;
+        JLabel subtitle = new JLabel("Analisis kemajuan belajar, pencapaian kompetensi, dan riwayat partisipasi.");
+        subtitle.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        subtitle.setForeground(TEXT_MUTED);
+
+        textWrap.add(title);
+        textWrap.add(Box.createVerticalStrut(4));
+        textWrap.add(subtitle);
+
+        JPanel downloadBtn = new RoundedPanel(8, RED_MAIN, RED_MAIN);
+        downloadBtn.setPreferredSize(new Dimension(200, 48));
+        downloadBtn.setLayout(new FlowLayout(FlowLayout.CENTER, 12, 12));
+        downloadBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        JLabel btnIcon = createIcon("images/Icon/Dashboard/Panitia/Download_Icon_Red.svg", 16, 16);
+        JLabel btnText = new JLabel("Unduh Laporan");
+        btnText.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        btnText.setForeground(Color.WHITE);
+
+        downloadBtn.add(btnIcon);
+        downloadBtn.add(btnText);
+
+        downloadBtn.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (userAktif == null) return;
+                try {
+                    JFileChooser fileChooser = new JFileChooser();
+                    fileChooser.setDialogTitle("Simpan Laporan CSV");
+                    fileChooser.setSelectedFile(new File("Laporan_Seminar_Peserta.csv"));
+
+                    int userSelection = fileChooser.showSaveDialog(null);
+                    if (userSelection == JFileChooser.APPROVE_OPTION) {
+                        String filePath = fileChooser.getSelectedFile().getAbsolutePath();
+                        if (!filePath.endsWith(".csv")) filePath += ".csv";
+                        laporanService.eksporLaporanPesertaCsv(userAktif.getIdUser(), filePath);
+                        JOptionPane.showMessageDialog(null, "Laporan berhasil diunduh ke:\n" + filePath, "Sukses", JOptionPane.INFORMATION_MESSAGE);
+                    }
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(null, "Gagal mengunduh laporan: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
+
+        JPanel rightWrap = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 16));
+        rightWrap.setOpaque(false);
+        rightWrap.add(downloadBtn);
+
+        header.add(textWrap, BorderLayout.WEST);
+        header.add(rightWrap, BorderLayout.EAST);
+
+        return header;
     }
 
-    private JPanel createMetricsSection() {
-        JPanel grid = new JPanel(new GridLayout(1, 4, 24, 0));
+    private JPanel createMetricsRow() {
+        JPanel grid = new JPanel(new GridLayout(1, 3, 24, 0));
         grid.setOpaque(false);
         grid.setAlignmentX(Component.LEFT_ALIGNMENT);
+        grid.setPreferredSize(new Dimension(920, 160));
+        grid.setMaximumSize(new Dimension(920, 160));
 
-        // Memastikan tinggi card 150px agar isinya lega
-        grid.setPreferredSize(new Dimension(956, 150));
-        grid.setMaximumSize(new Dimension(Integer.MAX_VALUE, 150));
-
-        grid.add(metricCard("JAM BELAJAR", "48", "Jam", new Color(79, 92, 142), new Color(183, 196, 253)));
-        grid.add(metricCard("SEMINAR SELESAI", "10", "", new Color(184, 0, 53), new Color(184, 0, 53)));
-        grid.add(metricCard("SKOR RATA-RATA", "92", "%", new Color(158, 0, 177), new Color(192, 38, 211)));
-        grid.add(metricCard("SERTIFIKAT", "10", "", new Color(55, 68, 117), new Color(133, 166, 249)));
+        grid.add(createMetricCard("JAM BELAJAR", String.valueOf(jamBelajar), " Jam", new Color(183, 196, 253), "images/Icon/Dashboard/Panitia/Seminar/Date_Icon.svg"));
+        grid.add(createMetricCard("SEMINAR DISELESAIKAN", String.valueOf(seminarSelesai), "", new Color(255, 218, 218), "images/Icon/Dashboard/Attendance_Icon.svg"));
+        grid.add(createMetricCard("SERTIFIKAT DIDAPAT", String.valueOf(sertifikatDidapat), "", new Color(224, 231, 255), "images/Icon/Dashboard/Certificate_Icon.svg"));
 
         return grid;
     }
 
-    private JPanel metricCard(String title, String value, String unit, Color iconBg, Color iconFg) {
-        JPanel card = new BorderedPanel(10, Color.WHITE, CARD_BORDER);
+    private JPanel createMetricCard(String title, String value, String suffix, Color iconBgColor, String iconPath) {
+        JPanel card = new RoundedPanel(12, Color.WHITE, BORDER_COLOR);
         card.setLayout(new BorderLayout());
-        card.setBorder(new EmptyBorder(22, 24, 22, 24));
+        card.setBorder(new EmptyBorder(24, 24, 24, 24));
 
-        JPanel iconPanel = new JPanel() {
-            @Override
-            protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(new Color(iconBg.getRed(), iconBg.getGreen(), iconBg.getBlue(), 25));
-                g2.fillRoundRect(0, 0, 40, 40, 8, 8);
-                g2.setColor(iconFg);
-                g2.fillRoundRect(10, 10, 20, 20, 4, 4);
-                g2.dispose();
-            }
-        };
-        iconPanel.setPreferredSize(new Dimension(40, 40));
-        iconPanel.setOpaque(false);
+        JPanel topRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        topRow.setOpaque(false);
 
-        JPanel top = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-        top.setOpaque(false);
-        top.add(iconPanel);
+        JPanel iconBox = new RoundedPanel(8, iconBgColor, iconBgColor);
+        iconBox.setPreferredSize(new Dimension(40, 40));
+        iconBox.setLayout(new GridBagLayout());
+        iconBox.add(createIcon(iconPath, 20, 20));
+        topRow.add(iconBox);
 
-        JPanel bottom = new JPanel();
-        bottom.setOpaque(false);
-        bottom.setLayout(new BoxLayout(bottom, BoxLayout.Y_AXIS));
-        bottom.add(label(title, Font.BOLD, 11, MUTED));
-        bottom.add(Box.createVerticalStrut(6));
+        JPanel textWrap = new JPanel();
+        textWrap.setLayout(new BoxLayout(textWrap, BoxLayout.Y_AXIS));
+        textWrap.setOpaque(false);
+        textWrap.setBorder(new EmptyBorder(16, 0, 0, 0));
 
-        JPanel valRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
-        valRow.setOpaque(false);
-        valRow.add(label(value, Font.BOLD, 32, TEXT));
-        if (!unit.isEmpty()) {
-            JLabel uLabel = label(unit, Font.PLAIN, 18, MUTED);
-            uLabel.setBorder(new EmptyBorder(8,0,0,0));
-            valRow.add(uLabel);
+        JLabel titleLbl = new JLabel(title);
+        titleLbl.setFont(new Font("Segoe UI", Font.BOLD, 10));
+        titleLbl.setForeground(TEXT_MUTED);
+
+        JPanel valWrap = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        valWrap.setOpaque(false);
+
+        JLabel valLbl = new JLabel(value);
+        valLbl.setFont(new Font("Segoe UI", Font.BOLD, 32));
+        valLbl.setForeground(TEXT_DARK);
+        valWrap.add(valLbl);
+
+        if (!suffix.isEmpty()) {
+            JLabel sufLbl = new JLabel(suffix);
+            sufLbl.setFont(new Font("Segoe UI", Font.PLAIN, 24));
+            sufLbl.setForeground(TEXT_MUTED);
+            sufLbl.setBorder(new EmptyBorder(6, 0, 0, 0));
+            valWrap.add(sufLbl);
         }
-        bottom.add(valRow);
 
-        card.add(top, BorderLayout.NORTH);
-        card.add(bottom, BorderLayout.SOUTH);
+        textWrap.add(titleLbl);
+        textWrap.add(Box.createVerticalStrut(4));
+        textWrap.add(valWrap);
+
+        card.add(topRow, BorderLayout.NORTH);
+        card.add(textWrap, BorderLayout.CENTER);
         return card;
     }
 
     private JPanel createAnalyticsSection() {
-        JPanel grid = new JPanel(new GridLayout(1, 2, 24, 0));
-        grid.setOpaque(false);
-        grid.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JPanel section = new RoundedPanel(12, Color.WHITE, BORDER_COLOR);
+        section.setLayout(new BorderLayout());
+        section.setAlignmentX(Component.LEFT_ALIGNMENT);
+        section.setPreferredSize(new Dimension(920, 360)); // Tinggi dikurangi karena sisa 3 bar
+        section.setMaximumSize(new Dimension(920, 360));
+        section.setBorder(new EmptyBorder(24, 24, 24, 24));
 
-        // Membebaskan tinggi grafik hingga 400px (Kebutuhan Scroll)
-        grid.setPreferredSize(new Dimension(956, 400));
-        grid.setMaximumSize(new Dimension(Integer.MAX_VALUE, 400));
+        JLabel title = new JLabel("Kategori Pembelajaran");
+        title.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        title.setForeground(TEXT_DARK);
+        section.add(title, BorderLayout.NORTH);
 
-        JPanel radarCard = new BorderedPanel(10, Color.WHITE, CARD_BORDER);
-        radarCard.setLayout(new BorderLayout());
-        radarCard.setBorder(new EmptyBorder(24, 24, 24, 24));
-        radarCard.add(label("Competency Radar", Font.BOLD, 18, TEXT), BorderLayout.NORTH);
-        radarCard.add(new RadarChart(), BorderLayout.CENTER);
+        JPanel barsPanel = new JPanel();
+        barsPanel.setLayout(new BoxLayout(barsPanel, BoxLayout.Y_AXIS));
+        barsPanel.setOpaque(false);
+        barsPanel.setBorder(new EmptyBorder(24, 0, 0, 0));
 
-        JPanel catCard = new BorderedPanel(10, Color.WHITE, CARD_BORDER);
-        catCard.setLayout(new BorderLayout());
-        catCard.setBorder(new EmptyBorder(24, 24, 24, 24));
-        catCard.add(label("Kategori Pembelajaran", Font.BOLD, 18, TEXT), BorderLayout.NORTH);
-        catCard.add(new CategoryBars(), BorderLayout.CENTER);
+        int totalCat = techCount + softCount + businessCount;
+        if (totalCat == 0) totalCat = 1; // Cegah divide by zero
 
-        grid.add(radarCard);
-        grid.add(catCard);
-        return grid;
+        double pTech = (double) techCount / totalCat;
+        double pSoft = (double) softCount / totalCat;
+        double pBus = (double) businessCount / totalCat;
+
+        // 👈 KUNCI: Cuma Nampilin 3 Baris Matriks Saja
+        barsPanel.add(createProgressBarItem("Teknologi & Pemrograman", pTech, RED_MAIN));
+        barsPanel.add(Box.createVerticalStrut(28));
+        barsPanel.add(createProgressBarItem("Pengembangan Diri & Soft Skill", pSoft, new Color(79, 92, 142)));
+        barsPanel.add(Box.createVerticalStrut(28));
+        barsPanel.add(createProgressBarItem("Bisnis & Kewirausahaan", pBus, new Color(192, 38, 211)));
+
+        section.add(barsPanel, BorderLayout.CENTER);
+        return section;
     }
 
-    private JPanel createTimelineSection() {
-        JPanel barCard = new BorderedPanel(10, Color.WHITE, CARD_BORDER);
-        barCard.setLayout(new BorderLayout());
-        barCard.setAlignmentX(Component.LEFT_ALIGNMENT);
-        barCard.setBorder(new EmptyBorder(24, 24, 24, 24));
-
-        // Membebaskan tinggi Bar Chart hingga 300px (Kebutuhan Scroll)
-        barCard.setPreferredSize(new Dimension(956, 300));
-        barCard.setMaximumSize(new Dimension(Integer.MAX_VALUE, 300));
-
-        JPanel titleRow = new JPanel(new BorderLayout());
-        titleRow.setOpaque(false);
-        titleRow.add(label("Frekuensi Kehadiran (6 Bulan Terakhir)", Font.BOLD, 18, TEXT), BorderLayout.WEST);
-
-        JPanel legend = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 0));
-        legend.setOpaque(false);
-        legend.add(legendItem("Dihadiri", RED));
-        legend.add(legendItem("Tersedia", new Color(249, 210, 218)));
-        titleRow.add(legend, BorderLayout.EAST);
-
-        barCard.add(titleRow, BorderLayout.NORTH);
-        barCard.add(new BarChart(), BorderLayout.CENTER);
-
-        return barCard;
-    }
-
-    private JPanel legendItem(String name, Color color) {
-        JPanel wrap = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+    private JPanel createProgressBarItem(String categoryName, double percentage, Color fillCol) {
+        JPanel wrap = new JPanel(new BorderLayout());
         wrap.setOpaque(false);
-        JPanel dot = new JPanel() {
+        wrap.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+
+        JPanel textRow = new JPanel(new BorderLayout());
+        textRow.setOpaque(false);
+        textRow.setBorder(new EmptyBorder(0, 0, 8, 0));
+
+        JLabel nameLbl = new JLabel(categoryName);
+        nameLbl.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        nameLbl.setForeground(TEXT_DARK);
+
+        int pctInt = (int) Math.round(percentage * 100);
+        JLabel pctLbl = new JLabel(pctInt + "%");
+        pctLbl.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        pctLbl.setForeground(TEXT_MUTED);
+
+        textRow.add(nameLbl, BorderLayout.WEST);
+        textRow.add(pctLbl, BorderLayout.EAST);
+
+        JPanel bar = new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(color);
-                g2.fillOval(0, 4, 10, 10);
+                g2.setColor(new Color(231, 238, 255));
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 12, 12);
+                g2.setColor(fillCol);
+                int fillWidth = (int) (getWidth() * percentage);
+                if (fillWidth > 0) g2.fillRoundRect(0, 0, fillWidth, getHeight(), 12, 12);
                 g2.dispose();
             }
         };
-        dot.setPreferredSize(new Dimension(10, 18));
-        dot.setOpaque(false);
-        wrap.add(dot);
-        wrap.add(label(name, Font.PLAIN, 12, MUTED));
+        bar.setOpaque(false);
+        bar.setPreferredSize(new Dimension(920, 12));
+
+        wrap.add(textRow, BorderLayout.NORTH);
+        wrap.add(bar, BorderLayout.CENTER);
+
         return wrap;
     }
 
-    private void downloadCSV() {
-        try {
-            JFileChooser fileChooser = new JFileChooser();
-            fileChooser.setSelectedFile(new File(CsvExporter.generateNamaFile("Analitik_Peserta")));
-            if (fileChooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
-                String filePath = fileChooser.getSelectedFile().getAbsolutePath();
-                if (!filePath.toLowerCase().endsWith(".csv")) filePath += ".csv";
-
-                String[] header = {"Kategori", "Nilai", "Keterangan"};
-                List<Object[]> rows = new ArrayList<>();
-                rows.add(new Object[]{"Jam Belajar", "48", "Jam"});
-                rows.add(new Object[]{"Seminar Diselesaikan", "10", "Kegiatan"});
-                rows.add(new Object[]{"Skor Rata-Rata", "92", "%"});
-                rows.add(new Object[]{"Sertifikat Didapat", "10", "Dokumen"});
-
-                CsvExporter.ekspor(filePath, header, rows);
-                JOptionPane.showMessageDialog(this, "Laporan Analitik berhasil diunduh.");
-            }
-        } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Gagal mengunduh: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-        }
+    private JLabel createIcon(String path, int width, int height) {
+        JLabel lbl = new JLabel();
+        try { lbl.setIcon(new FlatSVGIcon(path, width, height)); } catch (Exception ignored) {}
+        return lbl;
     }
 
-    // =========================================================================
-    // KOMPONEN GAMBAR GRAFIK
-    // =========================================================================
-
-    private class RadarChart extends JPanel {
-        public RadarChart() { setOpaque(false); }
-
-        @Override
-        protected void paintComponent(Graphics g) {
-            super.paintComponent(g);
+    private static class RoundedPanel extends JPanel {
+        private final int radius; private final Color bg, border;
+        public RoundedPanel(int radius, Color bg, Color border) {
+            this.radius = radius; this.bg = bg; this.border = border; setOpaque(false);
+        }
+        @Override protected void paintComponent(Graphics g) {
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
-            int cx = getWidth() / 2;
-            int cy = getHeight() / 2 + 10;
-            // Radius jauh lebih besar sekarang karena tingginya cukup
-            int radius = Math.min(getWidth(), getHeight()) / 2 - 40;
-
-            // Menggambar Spider Web
-            g2.setColor(new Color(226, 232, 240));
-            g2.setStroke(new BasicStroke(1.2f));
-            for (int i = 1; i <= 4; i++) {
-                int r = radius * i / 4;
-                g2.drawOval(cx - r, cy - r, r * 2, r * 2);
-            }
-            for (int i = 0; i < 5; i++) {
-                double angle = Math.PI * 2 * i / 5 - Math.PI / 2;
-                g2.drawLine(cx, cy, cx + (int)(radius * Math.cos(angle)), cy + (int)(radius * Math.sin(angle)));
-            }
-
-            // Menggambar Poligon Area
-            Polygon p = new Polygon();
-            double[] scores = {0.8, 0.9, 0.6, 0.7, 0.85};
-            for (int i = 0; i < 5; i++) {
-                double angle = Math.PI * 2 * i / 5 - Math.PI / 2;
-                int r = (int)(radius * scores[i]);
-                p.addPoint(cx + (int)(r * Math.cos(angle)), cy + (int)(r * Math.sin(angle)));
-            }
-            g2.setColor(new Color(225, 29, 72, 40));
-            g2.fillPolygon(p);
-            g2.setColor(RED);
-            g2.setStroke(new BasicStroke(2f));
-            g2.drawPolygon(p);
-
-            // Teks Indikator Sudut
-            g2.setColor(MUTED);
-            g2.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-            g2.drawString("Teknis", cx - 20, cy - radius - 15);
-            g2.drawString("Manajemen", cx + radius + 15, cy - 20);
-            g2.drawString("Komunikasi", cx + radius - 30, cy + radius + 20);
-            g2.drawString("Etika", cx - radius - 10, cy + radius + 20);
-            g2.drawString("Desain", cx - radius - 55, cy - 20);
-
+            g2.setColor(bg); g2.fill(new RoundRectangle2D.Double(0, 0, getWidth() - 1, getHeight() - 1, radius, radius));
+            g2.setColor(border); g2.draw(new RoundRectangle2D.Double(0, 0, getWidth() - 1, getHeight() - 1, radius, radius));
             g2.dispose();
         }
     }
 
-    private class CategoryBars extends JPanel {
-        public CategoryBars() { setOpaque(false); }
-
-        @Override
-        protected void paintComponent(Graphics g) {
-            super.paintComponent(g);
-            Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
-            String[] labels = {"Teknologi Informasi", "Bisnis & Manajemen", "Seni & Desain", "Kategori Lainnya"};
-            Color[] colors = {RED, BLUE, new Color(192, 38, 211), CARD_BORDER};
-            int[] percentages = {65, 45, 25, 10};
-
-            int y = 40;
-            int barHeight = 14; // Bar dibuat sedikit lebih tebal
-
-            for (int i = 0; i < labels.length; i++) {
-                g2.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-                g2.setColor(TEXT);
-                g2.drawString(labels[i], 0, y);
-
-                g2.setColor(MUTED);
-                g2.drawString(percentages[i] + "%", getWidth() - 35, y);
-
-                g2.setColor(SOFT_BLUE);
-                g2.fillRoundRect(0, y + 14, getWidth() - 50, barHeight, barHeight, barHeight);
-
-                g2.setColor(colors[i]);
-                int barWidth = (getWidth() - 50) * percentages[i] / 100;
-                g2.fillRoundRect(0, y + 14, barWidth, barHeight, barHeight, barHeight);
-
-                y += 65; // Jarak antar bar direnggangkan
-            }
-            g2.dispose();
-        }
-    }
-
-    private class BarChart extends JPanel {
-        public BarChart() { setOpaque(false); }
-
-        @Override
-        protected void paintComponent(Graphics g) {
-            super.paintComponent(g);
-            Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
-            int[] maxData = {4, 6, 5, 8, 7, 9};
-            int[] attendedData = {2, 5, 2, 7, 4, 6};
-            String[] months = {"Jan", "Feb", "Mar", "Apr", "Mei", "Jun"};
-
-            int barWidth = 40;
-            int gap = (getWidth() - (6 * barWidth)) / 5;
-            int x = 0;
-            int baseBottom = getHeight() - 30; // Ruang ekstra untuk teks bawah
-
-            for (int i = 0; i < 6; i++) {
-                // Skala pengali tinggi disesuaikan agar grafiknya menjulang
-                int maxH = maxData[i] * 18;
-                int attH = attendedData[i] * 18;
-
-                g2.setColor(new Color(225, 29, 72, 40));
-                g2.fillRoundRect(x, baseBottom - maxH, barWidth, maxH, 8, 8);
-                g2.fillRect(x, baseBottom - 8, barWidth, 8);
-
-                g2.setColor(RED);
-                g2.fillRoundRect(x, baseBottom - attH, barWidth, attH, 8, 8);
-                g2.fillRect(x, baseBottom - 8, barWidth, 8);
-
-                g2.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-                g2.setColor(MUTED);
-                FontMetrics fm = g2.getFontMetrics();
-                int textX = x + (barWidth - fm.stringWidth(months[i])) / 2;
-                g2.drawString(months[i], textX, baseBottom + 22);
-
-                x += barWidth + gap;
-            }
-            g2.dispose();
-        }
-    }
-
-    // =========================================================================
-    // UTILITY COMPONENTS (Bawaan dari SeminarPeserta)
-    // =========================================================================
-
-    private JLabel label(String text, int style, int size, Color color) {
-        JLabel label = new JLabel(text);
-        label.setFont(new Font("Segoe UI", style, size));
-        label.setForeground(color);
-        return label;
-    }
-
-    private JButton filledButton(String text, int width, int height) {
-        JButton button = new JButton(text);
-        button.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        button.setForeground(Color.WHITE);
-        button.setBackground(RED);
-        button.setFocusPainted(false);
-        button.setBorderPainted(false);
-        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        button.setPreferredSize(new Dimension(width, height));
-        button.setMaximumSize(new Dimension(width, height));
-        return button;
-    }
-
-    // Fitur Utama: Kunci lebar ke viewport, tapi biarkan tinggi tidak terbatas
-    private static class ScrollableHost extends JPanel implements Scrollable {
-        private ScrollableHost(JComponent content) {
-            setOpaque(false);
-            setLayout(new BorderLayout());
-            add(content, BorderLayout.CENTER);
-        }
-        @Override public Dimension getPreferredScrollableViewportSize() { return getPreferredSize(); }
-        @Override public int getScrollableUnitIncrement(Rectangle visibleRect, int orientation, int direction) { return 16; }
-        @Override public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) {
-            return orientation == SwingConstants.VERTICAL ? visibleRect.height : visibleRect.width;
-        }
-        @Override public boolean getScrollableTracksViewportWidth() { return true; }
-        @Override public boolean getScrollableTracksViewportHeight() { return false; } // FALSE = BISA SCROLL BAWAH
-    }
-
-    private static class BorderedPanel extends JPanel {
-        private final int radius;
-        private final Color background, border;
-        private BorderedPanel(int radius, Color background, Color border) {
-            this.radius = radius; this.background = background; this.border = border;
-            setOpaque(false);
-        }
-        @Override
-        protected void paintComponent(Graphics g) {
-            super.paintComponent(g);
-            Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2.setColor(background);
-            g2.fill(new RoundRectangle2D.Double(0, 0, getWidth() - 1, getHeight() - 1, radius, radius));
-            g2.setColor(border);
-            g2.draw(new RoundRectangle2D.Double(0, 0, getWidth() - 1, getHeight() - 1, radius, radius));
-            g2.dispose();
-        }
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            new LaporanPeserta().setVisible(true);
+        });
     }
 }

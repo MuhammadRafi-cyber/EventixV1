@@ -9,6 +9,7 @@ import dao.SeminarDAO;
 import dao.PembayaranDAO;
 import dao.PresensiDAO;
 import model.User;
+import org.example.component.ParticipantSidebar;
 import org.example.view.LoginForm;
 
 import service.PendaftaranService;
@@ -19,8 +20,6 @@ import service.PaymentService;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.awt.geom.RoundRectangle2D;
 import java.net.URL;
 import java.util.ArrayList;
@@ -28,14 +27,12 @@ import java.util.List;
 
 public class DashboardPeserta extends JFrame {
 
-    // --- Palet Warna ---
     private static final Color PAGE_BG = new Color(249, 249, 255);
     private static final Color TEXT_DARK = new Color(17, 28, 45);
     private static final Color TEXT_MUTED = new Color(92, 63, 64);
     private static final Color RED_MAIN = new Color(184, 0, 53);
     private static final Color BORDER_COLOR = new Color(229, 189, 190);
 
-    // --- Variabel Data Dinamis ---
     private String userName = "Peserta";
     private int totalSeminarDiikuti = 0;
     private int totalSeminarAkanDatang = 0;
@@ -48,22 +45,18 @@ public class DashboardPeserta extends JFrame {
         setSize(1280, 780);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
-
         loadBackendData();
         initComponents();
     }
 
     private void loadBackendData() {
         User userAktif = AuthController.getUserAktif();
-
         if (userAktif == null) {
             loadDummyData();
             return;
         }
-
         try {
             userName = userAktif.getNama();
-
             PembayaranDAO pembayaranDAO = new PembayaranDAO();
             PendaftaranDAO pendaftaranDAO = new PendaftaranDAO();
             AuditLogDAO auditLogDAO = new AuditLogDAO();
@@ -79,7 +72,6 @@ public class DashboardPeserta extends JFrame {
                     sertifikatDAO, pendaftaranDAO, presensiDAO, auditLogDAO
             );
 
-            // FETCH SEMINAR: Menggunakan Indeks Mutlak dari DAO
             List<Object[]> riwayatDaftar = pendaftaranService.getRiwayat(userAktif.getIdUser());
             if (riwayatDaftar != null) {
                 totalSeminarDiikuti = riwayatDaftar.size();
@@ -91,33 +83,21 @@ public class DashboardPeserta extends JFrame {
                         if (row.length >= 7 && row[6] != null) {
                             try {
                                 int idKategori = Integer.parseInt(String.valueOf(row[6]));
-                                if (idKategori == 1) {
-                                    kategoriTeks = "TEKNOLOGI DAN PEMROGRAMAN";
-                                } else if (idKategori == 2) {
-                                    kategoriTeks = "PENGEMBANGAN DIRI & SOFT SKILL";
-                                } else if (idKategori == 3) {
-                                    kategoriTeks = "BISNIS DAN KEWIRAUSAHAAN";
-                                }
+                                if (idKategori == 1) kategoriTeks = "TEKNOLOGI DAN PEMROGRAMAN";
+                                else if (idKategori == 2) kategoriTeks = "PENGEMBANGAN DIRI & SOFT SKILL";
+                                else if (idKategori == 3) kategoriTeks = "BISNIS DAN KEWIRAUSAHAAN";
                             } catch (NumberFormatException ignored) {}
                         }
-
                         String randomImg = "https://images.unsplash.com/photo-1544531586-fde5298cdd40?auto=format&fit=crop&w=280&q=80";
                         listSeminarKu.add(new SeminarInfo(judul, kategoriTeks, randomImg));
                     }
                 }
             }
-
-            // Fetch Sertifikat
             List<Object[]> riwayatSertifikat = sertifikatService.getSertifikatPemesan(userAktif.getIdUser());
-            if (riwayatSertifikat != null) {
-                totalSertifikat = riwayatSertifikat.size();
-            }
+            if (riwayatSertifikat != null) totalSertifikat = riwayatSertifikat.size();
 
             listAktivitasKu.add(new ActivityInfo("Berhasil login ke sistem", "Baru saja", "images/Icon/Dashboard/Panitia/Seminar/AddEdit/Document_Icon.svg"));
-            listAktivitasKu.add(new ActivityInfo("Membuka Dashboard", "Beberapa detik lalu", "images/Icon/Dashboard/Dashboard_Icon.svg"));
-
         } catch (Exception e) {
-            System.err.println("Gagal memuat database: " + e.getMessage());
             loadDummyData();
         }
     }
@@ -125,20 +105,16 @@ public class DashboardPeserta extends JFrame {
     private void loadDummyData() {
         userName = "Miko";
         totalSeminarDiikuti = 8;
-        totalSeminarAkanDatang = 0;
         totalSertifikat = 3;
-
-        listSeminarKu.add(new SeminarInfo("AI Ethics in Modern Research", "TEKNOLOGI DAN PEMROGRAMAN", "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=280&q=80"));
-        listSeminarKu.add(new SeminarInfo("Advanced Thesis Methodologies", "PENGEMBANGAN DIRI & SOFT SKILL", "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=280&q=80"));
-
+        listSeminarKu.add(new SeminarInfo("AI Ethics in Modern Research", "TEKNOLOGI", "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=280&q=80"));
+        listSeminarKu.add(new SeminarInfo("Advanced Thesis Methodologies", "SOFT SKILL", "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=280&q=80"));
         listAktivitasKu.add(new ActivityInfo("Teregistrasi untuk AI Ethics Seminar", "2 hours ago", "images/Icon/Dashboard/Panitia/Seminar/AddEdit/Document_Icon.svg"));
-        listAktivitasKu.add(new ActivityInfo("Mendapat Sertifikat: Digital Marketing", "Yesterday at 4:30 PM", "images/Icon/Dashboard/Certificate_Icon.svg"));
     }
 
     private void initComponents() {
         JPanel root = new JPanel(new BorderLayout());
         root.setBackground(PAGE_BG);
-        root.add(createSidebar(), BorderLayout.WEST);
+        root.add(new ParticipantSidebar("Dashboard"), BorderLayout.WEST);
 
         JPanel mainArea = new JPanel(new BorderLayout());
         mainArea.setBackground(PAGE_BG);
@@ -148,7 +124,7 @@ public class DashboardPeserta extends JFrame {
             @Override
             public Dimension getPreferredSize() {
                 Dimension d = super.getPreferredSize();
-                d.width = 1000;
+                d.width = 920; // 👈 KUNCI: Lebar diperkecil ke 920
                 return d;
             }
             @Override
@@ -182,7 +158,7 @@ public class DashboardPeserta extends JFrame {
         JScrollPane scrollPane = new JScrollPane(anchorWrapper);
         scrollPane.setBorder(null);
         scrollPane.getVerticalScrollBar().setUnitIncrement(30);
-        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         scrollPane.getViewport().setOpaque(false);
 
         mainArea.add(scrollPane, BorderLayout.CENTER);
@@ -191,94 +167,18 @@ public class DashboardPeserta extends JFrame {
         add(root);
     }
 
-    // =========================================================================
-    // 3. KOMPONEN UI
-    // =========================================================================
-    private JPanel createSidebar() {
-        JPanel sidebar = new JPanel(new BorderLayout());
-        sidebar.setBackground(new Color(79, 92, 142));
-        sidebar.setPreferredSize(new Dimension(260, 0));
-        sidebar.setBorder(new EmptyBorder(32, 24, 32, 24));
-
-        JPanel brandPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
-        brandPanel.setOpaque(false);
-        brandPanel.add(createIcon("images/Icon/RegistForm/Eventix_Icon_White.svg", 21, 28));
-
-        JLabel brandName = new JLabel("Eventix");
-        brandName.setFont(new Font("Segoe UI", Font.BOLD, 28));
-        brandName.setForeground(Color.WHITE);
-        brandPanel.add(brandName);
-
-        JPanel menuPanel = new JPanel();
-        menuPanel.setLayout(new BoxLayout(menuPanel, BoxLayout.Y_AXIS));
-        menuPanel.setOpaque(false);
-        menuPanel.setBorder(new EmptyBorder(40, 0, 0, 0));
-
-        menuPanel.add(createMenuButton("Dashboard", "images/Icon/Dashboard/Dashboard_Icon_White.svg", true));
-        menuPanel.add(Box.createVerticalStrut(8));
-        menuPanel.add(createMenuButton("Seminar", "images/Icon/Dashboard/Seminar_Icon_White.svg", false));
-        menuPanel.add(Box.createVerticalStrut(8));
-        menuPanel.add(createMenuButton("Sertifikat", "images/Icon/Dashboard/Certificate_Icon_White.svg", false));
-
-        JPanel bottomPanel = new JPanel(new BorderLayout());
-        bottomPanel.setOpaque(false);
-        JPanel logoutBtn = createMenuButton("Logout", "images/Icon/Dashboard/LogOut_Icon.svg", false);
-
-        logoutBtn.addMouseListener(new MouseAdapter() {
-            @Override public void mouseClicked(MouseEvent e) {
-                AuthController.setUserAktif(null);
-                dispose();
-                new LoginForm().setVisible(true);
-            }
-        });
-
-        bottomPanel.add(logoutBtn, BorderLayout.SOUTH);
-
-        sidebar.add(brandPanel, BorderLayout.NORTH);
-        sidebar.add(menuPanel, BorderLayout.CENTER);
-        sidebar.add(bottomPanel, BorderLayout.SOUTH);
-        return sidebar;
-    }
-
-    private JPanel createMenuButton(String text, String iconPath, boolean isActive) {
-        JPanel btn = new JPanel(new BorderLayout());
-        btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50));
-        btn.setPreferredSize(new Dimension(212, 50));
-        btn.setBackground(isActive ? new Color(255, 255, 255, 25) : new Color(0,0,0,0));
-        btn.setOpaque(isActive);
-        if (isActive) btn.setBorder(BorderFactory.createMatteBorder(0, 4, 0, 0, RED_MAIN));
-        else btn.setBorder(new EmptyBorder(0, 4, 0, 0));
-
-        JPanel content = new JPanel(new FlowLayout(FlowLayout.LEFT, 16, 15));
-        content.setOpaque(false);
-        content.add(createIcon(iconPath, 18, 18));
-
-        JLabel lbl = new JLabel(text);
-        lbl.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        lbl.setForeground(isActive ? Color.WHITE : new Color(255, 255, 255, 178));
-        content.add(lbl);
-
-        btn.add(content, BorderLayout.CENTER);
-        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        return btn;
-    }
-
     private JPanel createTopNav() {
         JPanel nav = new JPanel(new BorderLayout());
         nav.setBackground(PAGE_BG);
         nav.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER_COLOR));
         nav.setPreferredSize(new Dimension(0, 64));
-
         JPanel profilePanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 16, 16));
         profilePanel.setOpaque(false);
-
         JLabel profileName = new JLabel(userName + " (Peserta)");
         profileName.setFont(new Font("Segoe UI", Font.BOLD, 14));
         profileName.setForeground(TEXT_DARK);
-
         profilePanel.add(profileName);
         profilePanel.add(createIcon("images/Icon/Dashboard/user_icon.svg", 28, 28));
-
         nav.add(profilePanel, BorderLayout.EAST);
         return nav;
     }
@@ -288,38 +188,27 @@ public class DashboardPeserta extends JFrame {
         header.setLayout(new BoxLayout(header, BoxLayout.Y_AXIS));
         header.setOpaque(false);
         header.setAlignmentX(Component.LEFT_ALIGNMENT);
-        header.setMaximumSize(new Dimension(Integer.MAX_VALUE, 80));
-
         JLabel title = new JLabel("Selamat Datang, " + userName + "!");
         title.setFont(new Font("Segoe UI", Font.BOLD, 28));
         title.setForeground(TEXT_DARK);
-        title.setAlignmentX(Component.LEFT_ALIGNMENT);
-
         JLabel subtitle = new JLabel("Kamu memiliki " + totalSeminarAkanDatang + " seminar mendatang. Tetap fokus!");
         subtitle.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         subtitle.setForeground(TEXT_MUTED);
-        subtitle.setAlignmentX(Component.LEFT_ALIGNMENT);
-
         header.add(title);
         header.add(Box.createVerticalStrut(4));
         header.add(subtitle);
         return header;
     }
 
-    // 👉 PERBAIKAN: Tinggi absolut dinaikkan ke 190px agar tidak kepotong saat scaling Windows
     private JPanel createStatsGrid() {
         JPanel grid = new JPanel(new GridLayout(1, 3, 24, 0));
         grid.setOpaque(false);
         grid.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        grid.setPreferredSize(new Dimension(1000, 190));
-        grid.setMaximumSize(new Dimension(1000, 190));
-        grid.setMinimumSize(new Dimension(1000, 190));
-
+        grid.setPreferredSize(new Dimension(920, 190)); // 👈 Lebar menyesuaikan
+        grid.setMaximumSize(new Dimension(920, 190));
         grid.add(createStatCard("SEMINAR DIIKUTI", String.valueOf(totalSeminarDiikuti), new Color(183, 196, 253), "images/Icon/Dashboard/Attendance_Icon.svg"));
         grid.add(createStatCard("AKAN DATANG", String.valueOf(totalSeminarAkanDatang), new Color(255, 218, 218), "images/Icon/Dashboard/Panitia/Seminar/Date_Icon.svg"));
         grid.add(createStatCard("SERTIFIKAT", String.valueOf(totalSertifikat), new Color(255, 214, 251), "images/Icon/Dashboard/Certificate_Icon.svg"));
-
         return grid;
     }
 
@@ -327,33 +216,26 @@ public class DashboardPeserta extends JFrame {
         JPanel card = new RoundedPanel(12, Color.WHITE, BORDER_COLOR);
         card.setLayout(new BorderLayout());
         card.setBorder(new EmptyBorder(24, 24, 24, 24));
-
         JPanel topRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         topRow.setOpaque(false);
-
         JPanel iconBox = new RoundedPanel(8, iconBgColor, iconBgColor);
         iconBox.setPreferredSize(new Dimension(50, 50));
         iconBox.setLayout(new GridBagLayout());
         iconBox.add(createIcon(iconPath, 28, 28));
         topRow.add(iconBox);
-
         JPanel textWrap = new JPanel();
         textWrap.setLayout(new BoxLayout(textWrap, BoxLayout.Y_AXIS));
         textWrap.setOpaque(false);
         textWrap.setBorder(new EmptyBorder(16, 0, 0, 0));
-
         JLabel titleLbl = new JLabel(title);
         titleLbl.setFont(new Font("Segoe UI", Font.BOLD, 12));
         titleLbl.setForeground(TEXT_MUTED);
-
         JLabel valLbl = new JLabel(value);
         valLbl.setFont(new Font("Segoe UI", Font.BOLD, 36));
         valLbl.setForeground(TEXT_DARK);
-
         textWrap.add(titleLbl);
         textWrap.add(Box.createVerticalStrut(4));
         textWrap.add(valLbl);
-
         card.add(topRow, BorderLayout.NORTH);
         card.add(textWrap, BorderLayout.CENTER);
         return card;
@@ -368,12 +250,10 @@ public class DashboardPeserta extends JFrame {
         JLabel title = new JLabel("Seminar Yang Diikuti");
         title.setFont(new Font("Segoe UI", Font.BOLD, 20));
         title.setForeground(TEXT_DARK);
-        title.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         JPanel seminarList = new JPanel();
         seminarList.setLayout(new BoxLayout(seminarList, BoxLayout.X_AXIS));
         seminarList.setOpaque(false);
-        seminarList.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         if (listSeminarKu.isEmpty()) {
             JLabel emptyLbl = new JLabel("Belum ada seminar yang diikuti.");
@@ -392,35 +272,30 @@ public class DashboardPeserta extends JFrame {
         seminarScroll.setOpaque(false);
         seminarScroll.getViewport().setOpaque(false);
         seminarScroll.getHorizontalScrollBar().setUnitIncrement(20);
+        // 👈 KUNCI: Memastikan slider horizontal aktif jika card seminar berlebih
+        seminarScroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         seminarScroll.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER);
         seminarScroll.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        seminarScroll.setPreferredSize(new Dimension(1000, 310));
-        seminarScroll.setMaximumSize(new Dimension(1000, 310));
+        seminarScroll.setPreferredSize(new Dimension(920, 310));
+        seminarScroll.setMaximumSize(new Dimension(920, 310));
 
         section.add(title);
         section.add(Box.createVerticalStrut(20));
         section.add(seminarScroll);
-
         return section;
     }
 
     private JPanel createSeminarCard(String title, String category, String imageUrl) {
         JPanel card = new RoundedPanel(12, Color.WHITE, BORDER_COLOR);
         card.setLayout(new BorderLayout());
-
-        Dimension cardSize = new Dimension(280, 290);
-        card.setPreferredSize(cardSize);
-        card.setMinimumSize(cardSize);
-        card.setMaximumSize(cardSize);
+        card.setPreferredSize(new Dimension(280, 290));
+        card.setMinimumSize(new Dimension(280, 290));
+        card.setMaximumSize(new Dimension(280, 290));
 
         JPanel imageContainer = new RoundedPanel(12, new Color(231, 238, 255), BORDER_COLOR);
         imageContainer.setPreferredSize(new Dimension(280, 130));
         imageContainer.setLayout(new BorderLayout());
-
         JLabel imageLabel = new JLabel("Memuat...", SwingConstants.CENTER);
-        imageLabel.setFont(new Font("Segoe UI", Font.ITALIC, 12));
-        imageLabel.setForeground(Color.GRAY);
         imageContainer.add(imageLabel, BorderLayout.CENTER);
 
         new Thread(() -> {
@@ -443,10 +318,8 @@ public class DashboardPeserta extends JFrame {
         textPanel.setLayout(new BoxLayout(textPanel, BoxLayout.Y_AXIS));
         textPanel.setOpaque(false);
         textPanel.setBorder(new EmptyBorder(16, 16, 16, 16));
-
         JPanel badgePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         badgePanel.setOpaque(false);
-
         JLabel badge = new JLabel(" " + category + " ");
         badge.setFont(new Font("Segoe UI", Font.BOLD, 9));
         badge.setForeground(RED_MAIN);
@@ -456,7 +329,6 @@ public class DashboardPeserta extends JFrame {
         badgePanel.add(badge);
 
         JLabel titleArea = new JLabel("<html><div style='width: 220px; font-family: Segoe UI; font-weight: bold; font-size: 14px; color: #111c2d;'>" + title + "</div></html>");
-
         textPanel.add(badgePanel);
         textPanel.add(Box.createVerticalStrut(12));
         textPanel.add(titleArea);
@@ -475,22 +347,18 @@ public class DashboardPeserta extends JFrame {
         JLabel title = new JLabel("Aktivitas Terkini");
         title.setFont(new Font("Segoe UI", Font.BOLD, 20));
         title.setForeground(TEXT_DARK);
-        title.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         JPanel activityBox = new RoundedPanel(12, Color.WHITE, BORDER_COLOR);
         activityBox.setLayout(new BoxLayout(activityBox, BoxLayout.Y_AXIS));
-        activityBox.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         JPanel actHeader = new JPanel(new FlowLayout(FlowLayout.LEFT, 16, 16));
         actHeader.setBackground(new Color(240, 243, 255));
         actHeader.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER_COLOR));
         actHeader.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50));
-
         JLabel actHeaderLbl = new JLabel("RIWAYAT AKTIVITAS");
         actHeaderLbl.setFont(new Font("Segoe UI", Font.BOLD, 12));
         actHeaderLbl.setForeground(TEXT_MUTED);
         actHeader.add(actHeaderLbl);
-
         activityBox.add(actHeader);
 
         if (listAktivitasKu.isEmpty()) {
@@ -498,8 +366,6 @@ public class DashboardPeserta extends JFrame {
             emptyPanel.setOpaque(false);
             emptyPanel.setBorder(new EmptyBorder(16,16,16,16));
             JLabel emptyLbl = new JLabel("Belum ada riwayat aktivitas.");
-            emptyLbl.setFont(new Font("Segoe UI", Font.ITALIC, 14));
-            emptyLbl.setForeground(Color.GRAY);
             emptyPanel.add(emptyLbl, BorderLayout.CENTER);
             activityBox.add(emptyPanel);
         } else {
@@ -511,7 +377,6 @@ public class DashboardPeserta extends JFrame {
         section.add(title);
         section.add(Box.createVerticalStrut(20));
         section.add(activityBox);
-
         return section;
     }
 
@@ -522,7 +387,6 @@ public class DashboardPeserta extends JFrame {
                 BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER_COLOR),
                 new EmptyBorder(16, 16, 16, 16)
         ));
-
         item.setMaximumSize(new Dimension(Integer.MAX_VALUE, 85));
 
         JPanel iconPanel = new RoundedPanel(20, new Color(240, 243, 255), BORDER_COLOR);
@@ -533,12 +397,10 @@ public class DashboardPeserta extends JFrame {
         JPanel textPanel = new JPanel();
         textPanel.setLayout(new BoxLayout(textPanel, BoxLayout.Y_AXIS));
         textPanel.setOpaque(false);
-
         JLabel titleLbl = new JLabel("<html><span style='font-family: Segoe UI; font-weight: bold; font-size: 14px; color: #111c2d;'>" + title + "</span></html>");
         JLabel timeLbl = new JLabel(time);
         timeLbl.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         timeLbl.setForeground(TEXT_MUTED);
-
         textPanel.add(titleLbl);
         textPanel.add(Box.createVerticalStrut(4));
         textPanel.add(timeLbl);
@@ -550,17 +412,10 @@ public class DashboardPeserta extends JFrame {
 
     private JLabel createIcon(String path, int width, int height) {
         JLabel lbl = new JLabel();
-        try {
-            lbl.setIcon(new FlatSVGIcon(path, width, height));
-        } catch (Exception e) {
-            lbl.setText("X");
-        }
+        try { lbl.setIcon(new FlatSVGIcon(path, width, height)); } catch (Exception ignored) {}
         return lbl;
     }
 
-    // =========================================================================
-    // UTILITY CLASSES
-    // =========================================================================
     private static class RoundedPanel extends JPanel {
         private final int radius;
         private final Color bg, border;
@@ -575,7 +430,6 @@ public class DashboardPeserta extends JFrame {
             g2.setColor(border);
             g2.draw(new RoundRectangle2D.Double(0, 0, getWidth() - 1, getHeight() - 1, radius, radius));
             g2.dispose();
-            super.paintComponent(g);
         }
     }
 
@@ -587,11 +441,5 @@ public class DashboardPeserta extends JFrame {
     private static class ActivityInfo {
         String title, time, iconPath;
         public ActivityInfo(String t, String tm, String i) { title = t; time = tm; iconPath = i; }
-    }
-
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            new DashboardPeserta().setVisible(true);
-        });
     }
 }
